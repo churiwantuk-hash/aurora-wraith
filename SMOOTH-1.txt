@@ -1093,6 +1093,7 @@ function Invoke-LevelMenu {
 function Show-Banner {
     Say '  ============================================================' 'DarkCyan'
     Say ("     {0}   |   FiveM Performance Settings v{1}" -f $Brand, $Version) 'Cyan'
+    Say '     SETTING : SMOOTH-1 [#----] 1/5' 'Yellow'
     Say '  ============================================================' 'DarkCyan'
 }
 
