@@ -1098,8 +1098,32 @@ function Show-Banner {
 # ------------------------------------------------------------------ setting: SPARK (theme + recipe, set by the pack builder)
 $Theme = @{ Name = 'SPARK'; Tag = 'Weak-PC rescue: lowest load, texture filter off, closes every heavy app'; A = 'Yellow'; B = 'DarkYellow'; G = 'White'; D = 'DarkYellow'; Fg = 'Black'; Bg = 'Yellow'; Edge = '/\'; Icon = '**' }
 $ThemeMap = @{ 'Cyan' = $Theme.A; 'DarkCyan' = $Theme.B; 'Magenta' = $Theme.A; 'Green' = $Theme.G; 'DarkGray' = $Theme.D }
-function Say([string]$text, [string]$color = 'Gray') { if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
-function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + $text + ' ') -ForegroundColor $Theme.A }
+# Own wording: engine line (regex) -> this Setting's line
+$Voice = @(
+    @('^  Scanning PC\.\.\.$', '  Striking the flint: reading your PC...'),
+    @('^PC specs$', 'Spark check'),
+    @('^Warnings$', 'Hot spots'),
+    @('^  Recommended level for this PC: (.+)$', '  Best fuel for this PC: $1'),
+    @('^(.+) preset: (.+)$', 'SPARK ignition: $2'),
+    @('^  Level: (.+)$', '  Fuel: $1'),
+    @('^(\d+) to change  \|  (\d+) already optimal  \|  (\d+) skipped$', 'Ignition list: $1 to light | $2 already lit | $3 skipped'),
+    @('^  \[CHANGE\] ', '  [LIGHT] '),
+    @('^  OK    ', '  LIT '),
+    @('^RAM-heavy apps \((\d+) MB total\)$', 'Heavy apps smothering the spark ($1 MB)'),
+    @('^  No RAM-heavy apps to close\.$', '  Nothing smothering the spark.'),
+    @('^Apply everything\? (\d+) settings \+ close (\d+) apps \(originals are backed up, restore with menu 4\) \(y/n\)$', 'Light the spark? $1 settings + close $2 apps, backup saved first (y/n)'),
+    @('^Cancelled, nothing changed\.$', 'Spark held back, nothing changed.'),
+    @('^Done: (\d+) applied, (\d+) failed$', 'Sparked: $1 applied, $2 failed'),
+    @('^(.+) preset complete$', 'SPARK is lit: weak PC, strong frames'),
+    @('^  Reboot once if Memory Compression / HAGS were enabled, then start playing\.$', '  Reboot once so every spark catches, then play.'),
+    @('^  This PC is already fully optimized\. Nothing to change\.$', '  Already burning bright. Nothing to change.'),
+    @('^Do these yourself \(cannot be set by a script\)$', 'Fan the flame yourself')
+)
+function VoiceText([string]$t) { foreach ($v in $Voice) { if ($t -match $v[0]) { return ($t -replace $v[0], $v[1]) } }; return $t }
+function Say([string]$text, [string]$color = 'Gray') { $text = VoiceText $text; if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
+function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + (VoiceText $text) + ' ') -ForegroundColor $Theme.A }
+function Ask([string]$q) { $q = VoiceText $q; if ($AutoAction) { return 'y' } return (Read-Host $q) }
+function RH([string]$q) { return (Read-Host (VoiceText $q)) }
 function Show-Banner {
     $edge = '  ' + ($Theme.Edge * 60).Substring(0, 60)
     $title = $Theme.Icon + '  ' + $Theme.Name + '  ' + $Theme.Icon

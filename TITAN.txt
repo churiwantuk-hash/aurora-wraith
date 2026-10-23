@@ -1098,8 +1098,32 @@ function Show-Banner {
 # ------------------------------------------------------------------ setting: TITAN (theme + recipe, set by the pack builder)
 $Theme = @{ Name = 'TITAN'; Tag = 'Mega crowd: empty city traffic, shortest draw distance, lowest CPU load'; A = 'White'; B = 'Gray'; G = 'White'; D = 'DarkGray'; Fg = 'Black'; Bg = 'Gray'; Edge = '#'; Icon = '[]' }
 $ThemeMap = @{ 'Cyan' = $Theme.A; 'DarkCyan' = $Theme.B; 'Magenta' = $Theme.A; 'Green' = $Theme.G; 'DarkGray' = $Theme.D }
-function Say([string]$text, [string]$color = 'Gray') { if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
-function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + $text + ' ') -ForegroundColor $Theme.A }
+# Own wording: engine line (regex) -> this Setting's line
+$Voice = @(
+    @('^  Scanning PC\.\.\.$', '  Raising the walls: surveying your PC...'),
+    @('^PC specs$', 'Foundation survey'),
+    @('^Warnings$', 'Weak points'),
+    @('^  Recommended level for this PC: (.+)$', '  Best fortress for this PC: $1'),
+    @('^(.+) preset: (.+)$', 'TITAN fortification: $2'),
+    @('^  Level: (.+)$', '  Fortress: $1'),
+    @('^(\d+) to change  \|  (\d+) already optimal  \|  (\d+) skipped$', 'Fortify list: $1 walls to raise | $2 already strong | $3 skipped'),
+    @('^  \[CHANGE\] ', '  [FORTIFY] '),
+    @('^  OK    ', '  BUILT '),
+    @('^RAM-heavy apps \((\d+) MB total\)$', 'Loose stones on the wall ($1 MB)'),
+    @('^  No RAM-heavy apps to close\.$', '  The walls are clean.'),
+    @('^Apply everything\? (\d+) settings \+ close (\d+) apps \(originals are backed up, restore with menu 4\) \(y/n\)$', 'Fortify now? $1 settings + close $2 apps, backup saved first (y/n)'),
+    @('^Cancelled, nothing changed\.$', 'The gates stay open, nothing changed.'),
+    @('^Done: (\d+) applied, (\d+) failed$', 'Fortified: $1 applied, $2 failed'),
+    @('^(.+) preset complete$', 'TITAN stands: ready for the biggest crowds'),
+    @('^  Reboot once if Memory Compression / HAGS were enabled, then start playing\.$', '  Reboot once to set the stones, then play.'),
+    @('^  This PC is already fully optimized\. Nothing to change\.$', '  The fortress is already complete. Nothing to change.'),
+    @('^Do these yourself \(cannot be set by a script\)$', 'Builder notes (do these yourself)')
+)
+function VoiceText([string]$t) { foreach ($v in $Voice) { if ($t -match $v[0]) { return ($t -replace $v[0], $v[1]) } }; return $t }
+function Say([string]$text, [string]$color = 'Gray') { $text = VoiceText $text; if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
+function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + (VoiceText $text) + ' ') -ForegroundColor $Theme.A }
+function Ask([string]$q) { $q = VoiceText $q; if ($AutoAction) { return 'y' } return (Read-Host $q) }
+function RH([string]$q) { return (Read-Host (VoiceText $q)) }
 function Show-Banner {
     $edge = '  ' + ($Theme.Edge * 60).Substring(0, 60)
     $title = $Theme.Icon + '  ' + $Theme.Name + '  ' + $Theme.Icon

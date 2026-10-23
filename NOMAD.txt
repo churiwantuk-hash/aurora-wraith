@@ -1098,8 +1098,32 @@ function Show-Banner {
 # ------------------------------------------------------------------ setting: NOMAD (theme + recipe, set by the pack builder)
 $Theme = @{ Name = 'NOMAD'; Tag = 'Laptop: touchpad keeps its feel, cloud sync and music stay open'; A = 'Green'; B = 'DarkGreen'; G = 'Green'; D = 'DarkGray'; Fg = 'White'; Bg = 'DarkGreen'; Edge = '-~'; Icon = '<>' }
 $ThemeMap = @{ 'Cyan' = $Theme.A; 'DarkCyan' = $Theme.B; 'Magenta' = $Theme.A; 'Green' = $Theme.G; 'DarkGray' = $Theme.D }
-function Say([string]$text, [string]$color = 'Gray') { if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
-function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + $text + ' ') -ForegroundColor $Theme.A }
+# Own wording: engine line (regex) -> this Setting's line
+$Voice = @(
+    @('^  Scanning PC\.\.\.$', '  Packing the bag: checking your laptop...'),
+    @('^PC specs$', 'Gear check'),
+    @('^Warnings$', 'Road warnings'),
+    @('^  Recommended level for this PC: (.+)$', '  Best route for this PC: $1'),
+    @('^(.+) preset: (.+)$', 'NOMAD trail: $2'),
+    @('^  Level: (.+)$', '  Route: $1'),
+    @('^(\d+) to change  \|  (\d+) already optimal  \|  (\d+) skipped$', 'Trail plan: $1 to pack | $2 already packed | $3 left behind'),
+    @('^  \[CHANGE\] ', '  [PACK] '),
+    @('^  OK    ', '  SET '),
+    @('^RAM-heavy apps \((\d+) MB total\)$', 'Extra weight in the bag ($1 MB)'),
+    @('^  No RAM-heavy apps to close\.$', '  The bag is already light.'),
+    @('^Apply everything\? (\d+) settings \+ close (\d+) apps \(originals are backed up, restore with menu 4\) \(y/n\)$', 'Hit the road? $1 settings + close $2 apps, backup saved first (y/n)'),
+    @('^Cancelled, nothing changed\.$', 'Staying home, nothing changed.'),
+    @('^Done: (\d+) applied, (\d+) failed$', 'Packed: $1 applied, $2 failed'),
+    @('^(.+) preset complete$', 'NOMAD ready: laptop tuned for the road'),
+    @('^  Reboot once if Memory Compression / HAGS were enabled, then start playing\.$', '  Reboot once before the trip, then play.'),
+    @('^  This PC is already fully optimized\. Nothing to change\.$', '  Already travel-ready. Nothing to change.'),
+    @('^Do these yourself \(cannot be set by a script\)$', 'Road tips (do these yourself)')
+)
+function VoiceText([string]$t) { foreach ($v in $Voice) { if ($t -match $v[0]) { return ($t -replace $v[0], $v[1]) } }; return $t }
+function Say([string]$text, [string]$color = 'Gray') { $text = VoiceText $text; if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
+function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + (VoiceText $text) + ' ') -ForegroundColor $Theme.A }
+function Ask([string]$q) { $q = VoiceText $q; if ($AutoAction) { return 'y' } return (Read-Host $q) }
+function RH([string]$q) { return (Read-Host (VoiceText $q)) }
 function Show-Banner {
     $edge = '  ' + ($Theme.Edge * 60).Substring(0, 60)
     $title = $Theme.Icon + '  ' + $Theme.Name + '  ' + $Theme.Icon
