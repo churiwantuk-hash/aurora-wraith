@@ -1109,6 +1109,10 @@ $Voice = @(
     @('^(\d+) to change  \|  (\d+) already optimal  \|  (\d+) skipped$', 'Tape list: $1 to rewind | $2 already original | $3 skipped'),
     @('^  \[CHANGE\] ', '  [REWIND] '),
     @('^  OK    ', '  BACK '),
+    @('^  \[SKIP\]   ', '  [PAUSE]   '),
+    @('^  \[OK\]     ', '  [BACK]     '),
+    @('^  FiveM is running: game graphics can be changed after closing it\.$', '  REWIND: close FiveM to unlock the graphics part of this Setting.'),
+    @('^  FiveM left open: game graphics will be skipped\.$', '  FiveM left open: REWIND applies only its Windows part now.'),
     @('^RAM-heavy apps \((\d+) MB total\)$', 'Apps ($1 MB)'),
     @('^  No RAM-heavy apps to close\.$', '  No apps to close.'),
     @('^Apply everything\? (\d+) settings \+ close (\d+) apps \(originals are backed up, restore with menu 4\) \(y/n\)$', 'Rewind? $1 settings + close $2 apps (y/n)'),
@@ -1140,7 +1144,19 @@ function Show-Banner {
     Write-Host ('     ' + $Theme.Tag) -ForegroundColor $Theme.G
     Write-Host $edge -ForegroundColor $Theme.B
 }
+# Own read-only check, shown right after the PC scan
+function Show-Special($hw) {
+    Head 'REWIND tape count'
+    try {
+        $n = @(Get-ChildItem $BackupDir -Filter 'backup-*.json' -ErrorAction SilentlyContinue | Where-Object { $_.Name -notlike '*.restored.json' }).Count
+        Say "  Backups ready to rewind: $n" 'White'
+    } catch { Say '  (this check is not available on this PC)' 'DarkGray' }
+}
+${function:Show-ScanBase} = ${function:Show-Scan}
+function Show-Scan($hw) { Show-ScanBase $hw; Show-Special $hw }
 $Presets['LV6'].Title = 'REVENANT'; $Presets['LV8'].Title = 'OMEGA'
+${function:Select-BackupBase} = ${function:Select-Backup}
+function Select-Backup { Show-Special $hw; return (Select-BackupBase) }
 
 # ------------------------------------------------------------------ main
 Clear-Host

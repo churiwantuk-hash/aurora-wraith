@@ -1109,6 +1109,10 @@ $Voice = @(
     @('^(\d+) to change  \|  (\d+) already optimal  \|  (\d+) skipped$', 'Shade list: $1 to dim | $2 already dark | $3 skipped'),
     @('^  \[CHANGE\] ', '  [DIM] '),
     @('^  OK    ', '  HID '),
+    @('^  \[SKIP\]   ', '  [HIDDEN]   '),
+    @('^  \[OK\]     ', '  [HID]     '),
+    @('^  FiveM is running: game graphics can be changed after closing it\.$', '  SHADE: close FiveM to unlock the graphics part of this Setting.'),
+    @('^  FiveM left open: game graphics will be skipped\.$', '  FiveM left open: SHADE applies only its Windows part now.'),
     @('^RAM-heavy apps \((\d+) MB total\)$', 'Lights left on ($1 MB)'),
     @('^  No RAM-heavy apps to close\.$', '  All lights already off.'),
     @('^Apply everything\? (\d+) settings \+ close (\d+) apps \(originals are backed up, restore with menu 4\) \(y/n\)$', 'Fall into the shade? $1 settings + close $2 apps, backup saved first (y/n)'),
@@ -1134,9 +1138,51 @@ function Show-Banner {
     Write-Host ('     ' + $Theme.Tag) -ForegroundColor $Theme.G
     Write-Host $edge -ForegroundColor $Theme.B
 }
+# Own read-only check, shown right after the PC scan
+function Show-Special($hw) {
+    Head 'SHADE background check'
+    try {
+        $all = @(Get-Process).Count; $win = @(Get-Process | Where-Object { $_.MainWindowTitle }).Count
+        Say ("  Processes running: {0} ({1} with a window, {2} in the background)" -f $all, $win, ($all - $win)) 'White'
+    } catch { Say '  (this check is not available on this PC)' 'DarkGray' }
+}
+${function:Show-ScanBase} = ${function:Show-Scan}
+function Show-Scan($hw) { Show-ScanBase $hw; Show-Special $hw }
 $Presets['LV2'] = @{ Title = 'SHADE'; Level = 2; Profile = 'MEDIUM'; Mode = 'SMOOTH'; Keep = @('Spotify', 'OneDrive'); Desc = 'Lighter graphics, closes browsers, launchers and recorders' }
 $Presets['LV6'].Title = 'REVENANT'; $Presets['LV8'].Title = 'OMEGA'
 $Recipe = @{ Drop = @(); Gta = [ordered]@{ 'LodScale' = '0.400000'; 'PedVarietyMultiplier' = '0.200000' } }
+$SigItems = @('toasts', 'transp', 'menudelay')
+function Get-SignatureRows($hw) {
+    $r = @()
+    $mm = 'SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile'
+    foreach ($id in $SigItems) {
+        switch ($id) {
+            'sysresp' { $r += New-Reg 'sig.sysresp' 'Game CPU share (SystemResponsiveness)' 'HKLM' $mm 'SystemResponsiveness' 'DWord' '10' '20' 'Background media tasks get less CPU, the game gets more' -Admin }
+            'netthr' { $r += New-Reg 'sig.netthr' 'Network throttling' 'HKLM' $mm 'NetworkThrottlingIndex' 'DWord' '-1' '10' 'Windows stops slowing network packets while media plays' -Admin }
+            'gamesprio' { $r += New-Reg 'sig.gamesprio' 'Game thread priority (MMCSS)' 'HKLM' ($mm + '\Tasks\Games') 'Priority' 'DWord' '6' '2' 'Game threads are scheduled ahead of normal work' -Admin }
+            'gamesched' { $r += New-Reg 'sig.gamesched' 'Game scheduling category' 'HKLM' ($mm + '\Tasks\Games') 'Scheduling Category' 'String' 'High' 'Medium' 'Games get the High multimedia scheduling class' -Admin }
+            'prisep' { $r += New-Reg 'sig.prisep' 'Foreground CPU boost' 'HKLM' 'SYSTEM\CurrentControlSet\Control\PriorityControl' 'Win32PrioritySeparation' 'DWord' '38' '2' 'The window in front (the game) gets longer CPU time slices' -Admin }
+            'powthr' { $r += New-Reg 'sig.powthr' 'Power throttling' 'HKLM' 'SYSTEM\CurrentControlSet\Control\Power\PowerThrottling' 'PowerThrottlingOff' 'DWord' '1' '0' 'Windows stops throttling helper processes to save power' -Admin }
+            'visualfx' { $r += New-Reg 'sig.visualfx' 'Windows visual effects' 'HKCU' 'Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects' 'VisualFXSetting' 'DWord' '2' '0' 'Best performance instead of animations (after the next sign-in)' }
+            'transp' { $r += New-Reg 'sig.transp' 'Transparency effects' 'HKCU' 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'EnableTransparency' 'DWord' '0' '1' 'No glass effect on taskbar and windows' }
+            'bgapps' { $r += New-Reg 'sig.bgapps' 'Background Store apps' 'HKCU' 'Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications' 'GlobalUserDisabled' 'DWord' '1' '0' 'Store apps stop running in the background' }
+            'toasts' { $r += New-Reg 'sig.toasts' 'Pop-up notifications' 'HKCU' 'Software\Microsoft\Windows\CurrentVersion\PushNotifications' 'ToastEnabled' 'DWord' '0' '1' 'No notification pop-ups over the game' }
+            'gbtips' { $r += New-Reg 'sig.gbtips' 'Game Bar start tips' 'HKCU' 'Software\Microsoft\GameBar' 'ShowStartupPanel' 'DWord' '0' '1' 'No Game Bar panel when a game starts' }
+            'menudelay' { $r += New-Reg 'sig.menudelay' 'Menu delay' 'HKCU' 'Control Panel\Desktop' 'MenuShowDelay' 'String' '0' '400' 'Windows menus open instantly (after the next sign-in)' }
+            'keydelay' { $r += New-Reg 'sig.keydelay' 'Key repeat delay' 'HKCU' 'Control Panel\Keyboard' 'KeyboardDelay' 'String' '0' '1' 'Shortest delay before a held key repeats (after the next sign-in)' }
+            'sticky' { $r += New-Reg 'sig.sticky' 'Sticky Keys shortcut' 'HKCU' 'Control Panel\Accessibility\StickyKeys' 'Flags' 'String' '506' '510' 'Pressing Shift 5 times no longer pops up Sticky Keys mid-fight' }
+            'fsewin' { $r += New-Reg 'sig.fsewin' 'Fullscreen mode for games' 'HKCU' 'System\GameConfigStore' 'GameDVR_FSEBehaviorMode' 'DWord' '2' '0' 'Games prefer true exclusive fullscreen' }
+            'swapfx' { if ($hw.Build -ge 22000) { $r += New-Reg 'sig.swapfx' 'Optimizations for windowed games' 'HKCU' 'Software\Microsoft\DirectX\UserGpuPreferences' 'DirectXUserGlobalSettings' 'String' 'SwapEffectUpgradeEnable=1;' $null 'Borderless window runs like fullscreen (Windows 11)' } }
+            'cpuprio' {
+                foreach ($exe in @(Get-FiveMExes | Where-Object { $_ -like '*GTAProcess.exe' })) {
+                    $leaf = Split-Path $exe -Leaf
+                    $r += New-Reg ('sig.cpuprio:' + $leaf) ('High CPU priority: ' + $leaf) 'HKLM' ('SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\' + $leaf + '\PerfOptions') 'CpuPriorityClass' 'DWord' '3' $null 'The game process starts with High CPU priority' -Admin
+                }
+            }
+        }
+    }
+    return $r
+}
 ${function:Get-PlanBase} = ${function:Get-Plan}
 function Get-Plan([string]$profile, [string]$mode, $hw) {
     $plan = @(Get-PlanBase $profile $mode $hw)
@@ -1149,6 +1195,7 @@ function Get-Plan([string]$profile, [string]$mode, $hw) {
             $plan += [pscustomobject]@{ Id = 'gta.' + $k; Title = 'GTA: ' + $k; Kind = 'xml'; Element = $k; Section = $section; Proposed = $Recipe.Gta[$k]; Default = $null; Why = ''; Admin = $false }
         }
     }
+    $plan += @(Get-SignatureRows $hw)
     return $plan
 }
 # ------------------------------------------------------------------ main
