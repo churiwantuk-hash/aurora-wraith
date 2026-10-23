@@ -29,7 +29,7 @@
   7 = Show apps using the most RAM / CPU
   8 = Crowd / fight mode (lowest CPU load + clear image + close RAM-heavy apps)
   9 = RUN ALL: everything in one go, pick LOW / MEDIUM / MAX, one confirmation
-  L = Named levels 1-8: MIST, SHADE, SPECTER, PHANTOM, REAPER, WRAITH, NIGHTMARE, AURORA OMEGA
+  L = Named levels 1-8: MIST, SHADE, SPECTER, PHANTOM, REAPER, REVENANT, NIGHTMARE, OMEGA
   Enter = RUN ALL
 
   ONE FILE FOR EVERY SETTING (upload only this file):
@@ -1094,6 +1094,8 @@ function Show-Banner {
     Say ("     {0}   |   FiveM Performance Settings v{1}" -f $Brand, $Version) 'Cyan'
     Say '  ============================================================' 'DarkCyan'
 }
+
+$Presets['LV6'].Title = 'REVENANT'; $Presets['LV8'].Title = 'OMEGA'
 
 # ------------------------------------------------------------------ main
 Clear-Host

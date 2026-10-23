@@ -29,7 +29,7 @@
   7 = Show apps using the most RAM / CPU
   8 = Crowd / fight mode (lowest CPU load + clear image + close RAM-heavy apps)
   9 = RUN ALL: everything in one go, pick LOW / MEDIUM / MAX, one confirmation
-  L = Named levels 1-8: MIST, SHADE, SPECTER, PHANTOM, REAPER, WRAITH, NIGHTMARE, AURORA OMEGA
+  L = Named levels 1-8: MIST, SHADE, SPECTER, PHANTOM, REAPER, REVENANT, NIGHTMARE, OMEGA
   Enter = RUN ALL
 
   ONE FILE FOR EVERY SETTING (upload only this file):
@@ -1092,9 +1092,25 @@ function Invoke-LevelMenu {
 function Show-Banner {
     Say '  ============================================================' 'DarkCyan'
     Say ("     {0}   |   FiveM Performance Settings v{1}" -f $Brand, $Version) 'Cyan'
-    Say '     SETTING : REWIND  |  RESTORE (back to original)' 'Yellow'
     Say '  ============================================================' 'DarkCyan'
 }
+
+# ------------------------------------------------------------------ setting: REWIND (theme + recipe, set by the pack builder)
+$Theme = @{ Name = 'REWIND'; Tag = 'Puts back the original settings from the newest backup'; A = 'White'; B = 'DarkCyan'; G = 'Green'; D = 'Gray'; Fg = 'Black'; Bg = 'White'; Edge = '<'; Icon = '<<' }
+$ThemeMap = @{ 'Cyan' = $Theme.A; 'DarkCyan' = $Theme.B; 'Magenta' = $Theme.A; 'Green' = $Theme.G; 'DarkGray' = $Theme.D }
+function Say([string]$text, [string]$color = 'Gray') { if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
+function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + $text + ' ') -ForegroundColor $Theme.A }
+function Show-Banner {
+    $edge = '  ' + ($Theme.Edge * 60).Substring(0, 60)
+    $title = $Theme.Icon + '  ' + $Theme.Name + '  ' + $Theme.Icon
+    $pad = [math]::Max(0, [int][math]::Floor((60 - $title.Length) / 2))
+    Write-Host $edge -ForegroundColor $Theme.B
+    Write-Host '  ' -NoNewline; Write-Host (((' ' * $pad) + $title).PadRight(60)) -ForegroundColor $Theme.Fg -BackgroundColor $Theme.Bg
+    Write-Host ("     {0}   |   FiveM Performance Settings v{1}" -f $Brand, $Version) -ForegroundColor $Theme.A
+    Write-Host ('     ' + $Theme.Tag) -ForegroundColor $Theme.G
+    Write-Host $edge -ForegroundColor $Theme.B
+}
+$Presets['LV6'].Title = 'REVENANT'; $Presets['LV8'].Title = 'OMEGA'
 
 # ------------------------------------------------------------------ main
 Clear-Host
