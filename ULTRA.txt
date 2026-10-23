@@ -1150,6 +1150,28 @@ function Show-Special($hw) {
 }
 ${function:Show-ScanBase} = ${function:Show-Scan}
 function Show-Scan($hw) { Show-ScanBase $hw; Show-Special $hw }
+# Preview: graphics rows that must wait for FiveM are folded into one line that lists this Setting's own values
+function Show-Preview($rows) {
+    $change = @($rows | Where-Object { $_.Status -eq 'CHANGE' })
+    $ok = @($rows | Where-Object { $_.Status -eq 'OK' })
+    $skip = @($rows | Where-Object { $_.Status -ne 'CHANGE' -and $_.Status -ne 'OK' })
+    Head ("{0} to change  |  {1} already optimal  |  {2} skipped" -f $change.Count, $ok.Count, $skip.Count)
+    foreach ($r in $change) {
+        Say ("  [CHANGE] {0}: {1}  ->  {2}" -f $r.S.Title, (Describe $r.S $r.Cur), (Describe $r.S $r.S.Proposed)) 'Green'
+        if ($r.Note) { Say ("           {0}" -f $r.Note) 'DarkGray' }
+    }
+    $gfx = @($skip | Where-Object { $_.S.Kind -eq 'xml' })
+    foreach ($r in @($skip | Where-Object { $_.S.Kind -ne 'xml' })) { Say ("  [SKIP]   {0}: {1}" -f $r.S.Title, $r.Note) 'Yellow' }
+    if ($gfx.Count -gt 0) {
+        Say ("  [SKIP]   {0} game graphics values wait: {1}" -f $gfx.Count, $gfx[0].Note) 'Yellow'
+        $vals = @($gfx | Where-Object { $_.S.Element -ne 'configSource' } | ForEach-Object { $_.S.Element + ' ' + (Describe $_.S $_.S.Proposed) })
+        Say ('           ' + $Theme.Name + ' graphics: ' + ($vals -join ', ')) 'DarkGray'
+    }
+    if ($ok.Count -gt 0) {
+        Say ("  [OK]     {0} items already set" -f $ok.Count) 'DarkGray'
+        Say '           (some may come from a Setting you ran before: run REWIND first to start clean)' 'DarkGray'
+    }
+}
 $Presets['MAX'] = @{ Title = 'ULTRA'; Profile = 'MAX'; Mode = 'CROWD'; Keep = @(); Desc = 'All-in: Ultimate power, HAGS, fullscreen optimizations off, crowd graphics' }
 $Presets['LV6'].Title = 'REVENANT'; $Presets['LV8'].Title = 'OMEGA'
 $Recipe = @{ Drop = @(); Gta = [ordered]@{ 'LodScale' = '0.120000' } }
