@@ -1098,8 +1098,32 @@ function Show-Banner {
 # ------------------------------------------------------------------ setting: BREEZE (theme + recipe, set by the pack builder)
 $Theme = @{ Name = 'BREEZE'; Tag = 'Smooth 1/5: lighter load but the city stays alive, recorders and music kept'; A = 'Cyan'; B = 'White'; G = 'White'; D = 'DarkCyan'; Fg = 'DarkCyan'; Bg = 'White'; Edge = '~-'; Icon = ')(' }
 $ThemeMap = @{ 'Cyan' = $Theme.A; 'DarkCyan' = $Theme.B; 'Magenta' = $Theme.A; 'Green' = $Theme.G; 'DarkGray' = $Theme.D }
-function Say([string]$text, [string]$color = 'Gray') { if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
-function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + $text + ' ') -ForegroundColor $Theme.A }
+# Own wording: engine line (regex) -> this Setting's line
+$Voice = @(
+    @('^  Scanning PC\.\.\.$', '  Opening the windows: feeling out your PC...'),
+    @('^PC specs$', 'Air check'),
+    @('^Warnings$', 'Stuffy spots'),
+    @('^  Recommended level for this PC: (.+)$', '  Best breeze for this PC: $1'),
+    @('^(.+) preset: (.+)$', 'BREEZE breeze: $2'),
+    @('^  Level: (.+)$', '  Flow: $1'),
+    @('^(\d+) to change  \|  (\d+) already optimal  \|  (\d+) skipped$', 'Breeze list: $1 to freshen | $2 already fresh | $3 skipped'),
+    @('^  \[CHANGE\] ', '  [FRESHEN] '),
+    @('^  OK    ', '  FRESH '),
+    @('^RAM-heavy apps \((\d+) MB total\)$', 'Stale apps, OBS / Medal / music stay ($1 MB)'),
+    @('^  No RAM-heavy apps to close\.$', '  The room is already fresh.'),
+    @('^Apply everything\? (\d+) settings \+ close (\d+) apps \(originals are backed up, restore with menu 4\) \(y/n\)$', 'Let the breeze in? $1 settings + close $2 apps, backup saved first (y/n)'),
+    @('^Cancelled, nothing changed\.$', 'The windows stay shut, nothing changed.'),
+    @('^Done: (\d+) applied, (\d+) failed$', 'Freshened: $1 applied, $2 failed'),
+    @('^(.+) preset complete$', 'BREEZE flowing: smooth 1/5, the city stays alive'),
+    @('^  Reboot once if Memory Compression / HAGS were enabled, then start playing\.$', '  Reboot once for fresh air, then play.'),
+    @('^  This PC is already fully optimized\. Nothing to change\.$', '  Already breezy. Nothing to change.'),
+    @('^Do these yourself \(cannot be set by a script\)$', 'Fresh tips (do these yourself)')
+)
+function VoiceText([string]$t) { foreach ($v in $Voice) { if ($t -match $v[0]) { return ($t -replace $v[0], $v[1]) } }; return $t }
+function Say([string]$text, [string]$color = 'Gray') { $text = VoiceText $text; if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
+function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + (VoiceText $text) + ' ') -ForegroundColor $Theme.A }
+function Ask([string]$q) { $q = VoiceText $q; if ($AutoAction) { return 'y' } return (Read-Host $q) }
+function RH([string]$q) { return (Read-Host (VoiceText $q)) }
 function Show-Banner {
     $edge = '  ' + ($Theme.Edge * 60).Substring(0, 60)
     $title = $Theme.Icon + '  ' + $Theme.Name + '  ' + $Theme.Icon

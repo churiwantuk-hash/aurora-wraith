@@ -1098,8 +1098,32 @@ function Show-Banner {
 # ------------------------------------------------------------------ setting: FALCON (theme + recipe, set by the pack builder)
 $Theme = @{ Name = 'FALCON'; Tag = 'Smooth 2/5: steady frames, sharp eyes on players and cars, music kept'; A = 'Yellow'; B = 'DarkYellow'; G = 'White'; D = 'DarkYellow'; Fg = 'White'; Bg = 'DarkYellow'; Edge = '>-'; Icon = '/>' }
 $ThemeMap = @{ 'Cyan' = $Theme.A; 'DarkCyan' = $Theme.B; 'Magenta' = $Theme.A; 'Green' = $Theme.G; 'DarkGray' = $Theme.D }
-function Say([string]$text, [string]$color = 'Gray') { if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
-function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + $text + ' ') -ForegroundColor $Theme.A }
+# Own wording: engine line (regex) -> this Setting's line
+$Voice = @(
+    @('^  Scanning PC\.\.\.$', '  Taking to the sky: eyeing your PC...'),
+    @('^PC specs$', 'Eagle eye'),
+    @('^Warnings$', 'Crosswinds'),
+    @('^  Recommended level for this PC: (.+)$', '  Best dive for this PC: $1'),
+    @('^(.+) preset: (.+)$', 'FALCON dive: $2'),
+    @('^  Level: (.+)$', '  Talon: $1'),
+    @('^(\d+) to change  \|  (\d+) already optimal  \|  (\d+) skipped$', 'Dive plan: $1 to dive | $2 already locked | $3 skipped'),
+    @('^  \[CHANGE\] ', '  [DIVE] '),
+    @('^  OK    ', '  LOCK '),
+    @('^RAM-heavy apps \((\d+) MB total\)$', 'Prey below slowing the dive ($1 MB)'),
+    @('^  No RAM-heavy apps to close\.$', '  Clear skies below.'),
+    @('^Apply everything\? (\d+) settings \+ close (\d+) apps \(originals are backed up, restore with menu 4\) \(y/n\)$', 'Start the dive? $1 settings + close $2 apps, backup saved first (y/n)'),
+    @('^Cancelled, nothing changed\.$', 'The falcon stays perched, nothing changed.'),
+    @('^Done: (\d+) applied, (\d+) failed$', 'Dived: $1 applied, $2 failed'),
+    @('^(.+) preset complete$', 'FALCON locked on: smooth 2/5, sharp eyes'),
+    @('^  Reboot once if Memory Compression / HAGS were enabled, then start playing\.$', '  Reboot once to sharpen the eyes, then play.'),
+    @('^  This PC is already fully optimized\. Nothing to change\.$', '  Already locked on. Nothing to change.'),
+    @('^Do these yourself \(cannot be set by a script\)$', 'Flight tips (do these yourself)')
+)
+function VoiceText([string]$t) { foreach ($v in $Voice) { if ($t -match $v[0]) { return ($t -replace $v[0], $v[1]) } }; return $t }
+function Say([string]$text, [string]$color = 'Gray') { $text = VoiceText $text; if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
+function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + (VoiceText $text) + ' ') -ForegroundColor $Theme.A }
+function Ask([string]$q) { $q = VoiceText $q; if ($AutoAction) { return 'y' } return (Read-Host $q) }
+function RH([string]$q) { return (Read-Host (VoiceText $q)) }
 function Show-Banner {
     $edge = '  ' + ($Theme.Edge * 60).Substring(0, 60)
     $title = $Theme.Icon + '  ' + $Theme.Name + '  ' + $Theme.Icon
