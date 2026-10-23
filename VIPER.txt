@@ -1138,6 +1138,21 @@ function Show-Banner {
     Write-Host ('     ' + $Theme.Tag) -ForegroundColor $Theme.G
     Write-Host $edge -ForegroundColor $Theme.B
 }
+$SigShow = @{
+    'sig.sysresp' = @{ '10' = 'Game gets 90% (10)'; '20' = 'Windows default (20)' }; 'sig.netthr' = @{ '-1' = 'Off'; '10' = 'On (Windows default)' }
+    'sig.gamesprio' = @{ '6' = 'High (6)'; '2' = 'Normal (2)' }; 'sig.prisep' = @{ '38' = 'Games boosted (38)'; '2' = 'Windows default (2)' }
+    'sig.powthr' = @{ '1' = 'Off'; '0' = 'On' }; 'sig.visualfx' = @{ '2' = 'Best performance'; '0' = 'Windows default'; '1' = 'Best appearance'; '3' = 'Custom' }
+    'sig.bgapps' = @{ '1' = 'Blocked'; '0' = 'Allowed' }; 'sig.menudelay' = @{ '0' = 'Instant (0 ms)'; '400' = '400 ms (default)' }
+    'sig.keydelay' = @{ '0' = 'Shortest'; '1' = 'Default' }; 'sig.sticky' = @{ '506' = 'Off'; '510' = 'On' }; 'sig.filterkeys' = @{ '122' = 'Off'; '126' = 'On' }
+    'sig.togglekeys' = @{ '58' = 'Off'; '62' = 'On' }; 'sig.fsewin' = @{ '2' = 'Exclusive fullscreen'; '0' = 'Windows default' }
+    'sig.cpuprio' = @{ '3' = 'High' }; 'sig.swapfx' = @{ 'SwapEffectUpgradeEnable=1;' = 'On' }
+}
+${function:Describe-Base} = ${function:Describe}
+function Describe($s, $v) {
+    $id = ([string]$s.Id) -replace ':.*', ''
+    if ($null -ne $v -and $SigShow.ContainsKey($id) -and $SigShow[$id].ContainsKey([string]$v)) { return $SigShow[$id][[string]$v] }
+    return (Describe-Base $s $v)
+}
 # Own read-only check, shown right after the PC scan
 function Show-Special($hw) {
     Head 'VIPER input check'
@@ -1154,7 +1169,9 @@ function Show-Preview($rows) {
     $change = @($rows | Where-Object { $_.Status -eq 'CHANGE' })
     $ok = @($rows | Where-Object { $_.Status -eq 'OK' })
     $skip = @($rows | Where-Object { $_.Status -ne 'CHANGE' -and $_.Status -ne 'OK' })
+    $win = @($rows | Where-Object { $_.S.Kind -ne 'xml' }).Count; $gx = @($rows | Where-Object { $_.S.Kind -eq 'xml' }).Count
     Head ("{0} to change  |  {1} already optimal  |  {2} skipped" -f $change.Count, $ok.Count, $skip.Count)
+    Say ("  {0} adjusts {1} items on this PC: {2} Windows + {3} game graphics" -f $Theme.Name, $rows.Count, $win, $gx) 'White'
     foreach ($r in $change) {
         Say ("  [CHANGE] {0}: {1}  ->  {2}" -f $r.S.Title, (Describe $r.S $r.Cur), (Describe $r.S $r.S.Proposed)) 'Green'
         if ($r.Note) { Say ("           {0}" -f $r.Note) 'DarkGray' }
@@ -1167,14 +1184,15 @@ function Show-Preview($rows) {
         Say ('           ' + $Theme.Name + ' graphics: ' + ($vals -join ', ')) 'DarkGray'
     }
     if ($ok.Count -gt 0) {
-        Say ("  [OK]     {0} items already set" -f $ok.Count) 'DarkGray'
+        Say ("  [OK]     {0} items already at the {1} value:" -f $ok.Count, $Theme.Name) 'DarkGray'
+        foreach ($r in $ok) { Say ("           {0} = {1}" -f ($r.S.Title -replace '^GTA: ', 'Game '), (Describe $r.S $r.S.Proposed)) 'DarkGray' }
         Say '           (some may come from a Setting you ran before: run REWIND first to start clean)' 'DarkGray'
     }
 }
 $Presets['COMPETITIVE'] = @{ Title = 'VIPER'; Profile = 'HIGH'; Mode = 'COMPETITIVE'; Keep = @('Spotify'); Desc = 'PvP strike: sharp image, no grass, players and cars stay detailed far away' }
 $Presets['LV6'].Title = 'REVENANT'; $Presets['LV8'].Title = 'OMEGA'
 $Recipe = @{ Drop = @(); Gta = [ordered]@{ 'LodScale' = '0.350000'; 'PedLodBias' = '0.300000'; 'VehicleLodBias' = '0.300000' } }
-$SigItems = @('sticky', 'keydelay', 'fsewin')
+$SigItems = @('gbtips', 'toasts', 'transp', 'menudelay', 'tipsoff', 'bgapps', 'bingsearch', 'sticky', 'filterkeys', 'togglekeys', 'gbbutton', 'keydelay')
 function Get-SignatureRows($hw) {
     $r = @()
     $mm = 'SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile'
@@ -1185,12 +1203,17 @@ function Get-SignatureRows($hw) {
             'gamesprio' { $r += New-Reg 'sig.gamesprio' 'Game thread priority (MMCSS)' 'HKLM' ($mm + '\Tasks\Games') 'Priority' 'DWord' '6' '2' 'Game threads are scheduled ahead of normal work' -Admin }
             'gamesched' { $r += New-Reg 'sig.gamesched' 'Game scheduling category' 'HKLM' ($mm + '\Tasks\Games') 'Scheduling Category' 'String' 'High' 'Medium' 'Games get the High multimedia scheduling class' -Admin }
             'prisep' { $r += New-Reg 'sig.prisep' 'Foreground CPU boost' 'HKLM' 'SYSTEM\CurrentControlSet\Control\PriorityControl' 'Win32PrioritySeparation' 'DWord' '38' '2' 'The window in front (the game) gets longer CPU time slices' -Admin }
-            'powthr' { $r += New-Reg 'sig.powthr' 'Power throttling' 'HKLM' 'SYSTEM\CurrentControlSet\Control\Power\PowerThrottling' 'PowerThrottlingOff' 'DWord' '1' '0' 'Windows stops throttling helper processes to save power' -Admin }
+            'powthr' { $r += New-Reg 'sig.powthr' 'Power throttling (helpers)' 'HKLM' 'SYSTEM\CurrentControlSet\Control\Power\PowerThrottling' 'PowerThrottlingOff' 'DWord' '1' '0' 'Windows stops throttling helper processes to save power' -Admin }
             'visualfx' { $r += New-Reg 'sig.visualfx' 'Windows visual effects' 'HKCU' 'Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects' 'VisualFXSetting' 'DWord' '2' '0' 'Best performance instead of animations (after the next sign-in)' }
             'transp' { $r += New-Reg 'sig.transp' 'Transparency effects' 'HKCU' 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'EnableTransparency' 'DWord' '0' '1' 'No glass effect on taskbar and windows' }
             'bgapps' { $r += New-Reg 'sig.bgapps' 'Background Store apps' 'HKCU' 'Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications' 'GlobalUserDisabled' 'DWord' '1' '0' 'Store apps stop running in the background' }
             'toasts' { $r += New-Reg 'sig.toasts' 'Pop-up notifications' 'HKCU' 'Software\Microsoft\Windows\CurrentVersion\PushNotifications' 'ToastEnabled' 'DWord' '0' '1' 'No notification pop-ups over the game' }
             'gbtips' { $r += New-Reg 'sig.gbtips' 'Game Bar start tips' 'HKCU' 'Software\Microsoft\GameBar' 'ShowStartupPanel' 'DWord' '0' '1' 'No Game Bar panel when a game starts' }
+            'tipsoff' { $r += New-Reg 'sig.tipsoff' 'Windows tips and suggestions' 'HKCU' 'Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' 'SubscribedContent-338389Enabled' 'DWord' '0' '1' 'No tips and suggestion pop-ups' }
+            'bingsearch' { $r += New-Reg 'sig.bingsearch' 'Web results in Start search' 'HKCU' 'Software\Microsoft\Windows\CurrentVersion\Search' 'BingSearchEnabled' 'DWord' '0' '1' 'Start search stays local, no web lookups in the background' }
+            'filterkeys' { $r += New-Reg 'sig.filterkeys' 'Filter Keys shortcut' 'HKCU' 'Control Panel\Accessibility\Keyboard Response' 'Flags' 'String' '122' '126' 'Holding Shift no longer pops up Filter Keys' }
+            'togglekeys' { $r += New-Reg 'sig.togglekeys' 'Toggle Keys shortcut' 'HKCU' 'Control Panel\Accessibility\ToggleKeys' 'Flags' 'String' '58' '62' 'Holding Num Lock no longer pops up Toggle Keys' }
+            'gbbutton' { $r += New-Reg 'sig.gbbutton' 'Xbox button opens Game Bar' 'HKCU' 'Software\Microsoft\GameBar' 'UseNexusForGameBarEnabled' 'DWord' '0' '1' 'A controller Xbox button no longer pops Game Bar over the game' }
             'menudelay' { $r += New-Reg 'sig.menudelay' 'Menu delay' 'HKCU' 'Control Panel\Desktop' 'MenuShowDelay' 'String' '0' '400' 'Windows menus open instantly (after the next sign-in)' }
             'keydelay' { $r += New-Reg 'sig.keydelay' 'Key repeat delay' 'HKCU' 'Control Panel\Keyboard' 'KeyboardDelay' 'String' '0' '1' 'Shortest delay before a held key repeats (after the next sign-in)' }
             'sticky' { $r += New-Reg 'sig.sticky' 'Sticky Keys shortcut' 'HKCU' 'Control Panel\Accessibility\StickyKeys' 'Flags' 'String' '506' '510' 'Pressing Shift 5 times no longer pops up Sticky Keys mid-fight' }
