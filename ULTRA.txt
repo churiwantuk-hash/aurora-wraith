@@ -1098,8 +1098,32 @@ function Show-Banner {
 # ------------------------------------------------------------------ setting: ULTRA (theme + recipe, set by the pack builder)
 $Theme = @{ Name = 'ULTRA'; Tag = 'All-in: Ultimate power, HAGS, fullscreen optimizations off, crowd graphics'; A = 'Red'; B = 'DarkRed'; G = 'White'; D = 'DarkRed'; Fg = 'White'; Bg = 'Red'; Edge = '='; Icon = '!!' }
 $ThemeMap = @{ 'Cyan' = $Theme.A; 'DarkCyan' = $Theme.B; 'Magenta' = $Theme.A; 'Green' = $Theme.G; 'DarkGray' = $Theme.D }
-function Say([string]$text, [string]$color = 'Gray') { if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
-function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + $text + ' ') -ForegroundColor $Theme.A }
+# Own wording: engine line (regex) -> this Setting's line
+$Voice = @(
+    @('^  Scanning PC\.\.\.$', '  Overloading sensors: full system sweep...'),
+    @('^PC specs$', 'Power readout'),
+    @('^Warnings$', 'Overload alerts'),
+    @('^  Recommended level for this PC: (.+)$', '  Max output for this PC: $1'),
+    @('^(.+) preset: (.+)$', 'ULTRA overdrive: $2'),
+    @('^  Level: (.+)$', '  Output: $1'),
+    @('^(\d+) to change  \|  (\d+) already optimal  \|  (\d+) skipped$', 'Overdrive list: $1 to boost | $2 already maxed | $3 skipped'),
+    @('^  \[CHANGE\] ', '  [BOOST] '),
+    @('^  OK    ', '  MAXED '),
+    @('^RAM-heavy apps \((\d+) MB total\)$', 'Power leeches ($1 MB)'),
+    @('^  No RAM-heavy apps to close\.$', '  No power leeches.'),
+    @('^Apply everything\? (\d+) settings \+ close (\d+) apps \(originals are backed up, restore with menu 4\) \(y/n\)$', 'Engage ULTRA overdrive? $1 settings + close $2 apps, backup saved first (y/n)'),
+    @('^Cancelled, nothing changed\.$', 'Overdrive disengaged, nothing changed.'),
+    @('^Done: (\d+) applied, (\d+) failed$', 'Overdriven: $1 applied, $2 failed'),
+    @('^(.+) preset complete$', 'ULTRA engaged: everything at full power'),
+    @('^  Reboot once if Memory Compression / HAGS were enabled, then start playing\.$', '  Reboot once to unlock full power (HAGS), then play.'),
+    @('^  This PC is already fully optimized\. Nothing to change\.$', '  Already at maximum. Nothing to change.'),
+    @('^Do these yourself \(cannot be set by a script\)$', 'Final boost (do these yourself)')
+)
+function VoiceText([string]$t) { foreach ($v in $Voice) { if ($t -match $v[0]) { return ($t -replace $v[0], $v[1]) } }; return $t }
+function Say([string]$text, [string]$color = 'Gray') { $text = VoiceText $text; if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
+function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + (VoiceText $text) + ' ') -ForegroundColor $Theme.A }
+function Ask([string]$q) { $q = VoiceText $q; if ($AutoAction) { return 'y' } return (Read-Host $q) }
+function RH([string]$q) { return (Read-Host (VoiceText $q)) }
 function Show-Banner {
     $edge = '  ' + ($Theme.Edge * 60).Substring(0, 60)
     $title = $Theme.Icon + '  ' + $Theme.Name + '  ' + $Theme.Icon
