@@ -29,7 +29,7 @@
   7 = Show apps using the most RAM / CPU
   8 = Crowd / fight mode (lowest CPU load + clear image + close RAM-heavy apps)
   9 = RUN ALL: everything in one go, pick LOW / MEDIUM / MAX, one confirmation
-  L = Named levels 1-8: MIST, SHADE, SPECTER, PHANTOM, REAPER, WRAITH, NIGHTMARE, AURORA OMEGA
+  L = Named levels 1-8: MIST, SHADE, SPECTER, PHANTOM, REAPER, REVENANT, NIGHTMARE, OMEGA
   Enter = RUN ALL
 
   ONE FILE FOR EVERY SETTING (upload only this file):
@@ -1092,10 +1092,41 @@ function Invoke-LevelMenu {
 function Show-Banner {
     Say '  ============================================================' 'DarkCyan'
     Say ("     {0}   |   FiveM Performance Settings v{1}" -f $Brand, $Version) 'Cyan'
-    Say '     SETTING : LV7 NIGHTMARE [#######-]' 'Yellow'
     Say '  ============================================================' 'DarkCyan'
 }
 
+# ------------------------------------------------------------------ setting: NIGHTMARE (theme + recipe, set by the pack builder)
+$Theme = @{ Name = 'NIGHTMARE'; Tag = 'Crowd + Normal textures on every GPU, lighter filter, sharp shadows'; A = 'Red'; B = 'DarkMagenta'; G = 'Magenta'; D = 'DarkMagenta'; Fg = 'Yellow'; Bg = 'DarkRed'; Edge = '%'; Icon = '}{' }
+$ThemeMap = @{ 'Cyan' = $Theme.A; 'DarkCyan' = $Theme.B; 'Magenta' = $Theme.A; 'Green' = $Theme.G; 'DarkGray' = $Theme.D }
+function Say([string]$text, [string]$color = 'Gray') { if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
+function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + $text + ' ') -ForegroundColor $Theme.A }
+function Show-Banner {
+    $edge = '  ' + ($Theme.Edge * 60).Substring(0, 60)
+    $title = $Theme.Icon + '  ' + $Theme.Name + '  ' + $Theme.Icon
+    $pad = [math]::Max(0, [int][math]::Floor((60 - $title.Length) / 2))
+    Write-Host $edge -ForegroundColor $Theme.B
+    Write-Host '  ' -NoNewline; Write-Host (((' ' * $pad) + $title).PadRight(60)) -ForegroundColor $Theme.Fg -BackgroundColor $Theme.Bg
+    Write-Host ("     {0}   |   FiveM Performance Settings v{1}" -f $Brand, $Version) -ForegroundColor $Theme.A
+    Write-Host ('     ' + $Theme.Tag) -ForegroundColor $Theme.G
+    Write-Host $edge -ForegroundColor $Theme.B
+}
+$Presets['LV7'] = @{ Title = 'NIGHTMARE'; Level = 7; Profile = 'MAX'; Mode = 'EXTREME'; Keep = @(); Desc = 'Crowd + Normal textures on every GPU, lighter filter, sharp shadows' }
+$Presets['LV6'].Title = 'REVENANT'; $Presets['LV8'].Title = 'OMEGA'
+$Recipe = @{ Drop = @(); Gta = [ordered]@{ 'LodScale' = '0.030000'; 'AnisotropicFiltering' = '2'; 'Shadow_SoftShadows' = '0' } }
+${function:Get-PlanBase} = ${function:Get-Plan}
+function Get-Plan([string]$profile, [string]$mode, $hw) {
+    $plan = @(Get-PlanBase $profile $mode $hw)
+    $plan = @($plan | Where-Object { $id = $_.Id; @($Recipe.Drop | Where-Object { $id -eq $_ -or $id -like ($_ + ':*') }).Count -eq 0 })
+    if (@($plan | Where-Object { $_.Kind -eq 'xml' }).Count -gt 0) {
+        foreach ($k in $Recipe.Gta.Keys) {
+            $row = @($plan | Where-Object { $_.Id -eq ('gta.' + $k) }) | Select-Object -First 1
+            if ($row) { $row.Proposed = $Recipe.Gta[$k]; continue }
+            $section = 'graphics'; if ($VideoElements -contains $k) { $section = 'video' }
+            $plan += [pscustomobject]@{ Id = 'gta.' + $k; Title = 'GTA: ' + $k; Kind = 'xml'; Element = $k; Section = $section; Proposed = $Recipe.Gta[$k]; Default = $null; Why = ''; Admin = $false }
+        }
+    }
+    return $plan
+}
 # ------------------------------------------------------------------ main
 Clear-Host
 Show-Banner
