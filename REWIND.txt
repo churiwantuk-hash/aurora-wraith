@@ -1144,6 +1144,21 @@ function Show-Banner {
     Write-Host ('     ' + $Theme.Tag) -ForegroundColor $Theme.G
     Write-Host $edge -ForegroundColor $Theme.B
 }
+$SigShow = @{
+    'sig.sysresp' = @{ '10' = 'Game gets 90% (10)'; '20' = 'Windows default (20)' }; 'sig.netthr' = @{ '-1' = 'Off'; '10' = 'On (Windows default)' }
+    'sig.gamesprio' = @{ '6' = 'High (6)'; '2' = 'Normal (2)' }; 'sig.prisep' = @{ '38' = 'Games boosted (38)'; '2' = 'Windows default (2)' }
+    'sig.powthr' = @{ '1' = 'Off'; '0' = 'On' }; 'sig.visualfx' = @{ '2' = 'Best performance'; '0' = 'Windows default'; '1' = 'Best appearance'; '3' = 'Custom' }
+    'sig.bgapps' = @{ '1' = 'Blocked'; '0' = 'Allowed' }; 'sig.menudelay' = @{ '0' = 'Instant (0 ms)'; '400' = '400 ms (default)' }
+    'sig.keydelay' = @{ '0' = 'Shortest'; '1' = 'Default' }; 'sig.sticky' = @{ '506' = 'Off'; '510' = 'On' }; 'sig.filterkeys' = @{ '122' = 'Off'; '126' = 'On' }
+    'sig.togglekeys' = @{ '58' = 'Off'; '62' = 'On' }; 'sig.fsewin' = @{ '2' = 'Exclusive fullscreen'; '0' = 'Windows default' }
+    'sig.cpuprio' = @{ '3' = 'High' }; 'sig.swapfx' = @{ 'SwapEffectUpgradeEnable=1;' = 'On' }
+}
+${function:Describe-Base} = ${function:Describe}
+function Describe($s, $v) {
+    $id = ([string]$s.Id) -replace ':.*', ''
+    if ($null -ne $v -and $SigShow.ContainsKey($id) -and $SigShow[$id].ContainsKey([string]$v)) { return $SigShow[$id][[string]$v] }
+    return (Describe-Base $s $v)
+}
 # Own read-only check, shown right after the PC scan
 function Show-Special($hw) {
     Head 'REWIND tape count'
@@ -1159,7 +1174,9 @@ function Show-Preview($rows) {
     $change = @($rows | Where-Object { $_.Status -eq 'CHANGE' })
     $ok = @($rows | Where-Object { $_.Status -eq 'OK' })
     $skip = @($rows | Where-Object { $_.Status -ne 'CHANGE' -and $_.Status -ne 'OK' })
+    $win = @($rows | Where-Object { $_.S.Kind -ne 'xml' }).Count; $gx = @($rows | Where-Object { $_.S.Kind -eq 'xml' }).Count
     Head ("{0} to change  |  {1} already optimal  |  {2} skipped" -f $change.Count, $ok.Count, $skip.Count)
+    Say ("  {0} adjusts {1} items on this PC: {2} Windows + {3} game graphics" -f $Theme.Name, $rows.Count, $win, $gx) 'White'
     foreach ($r in $change) {
         Say ("  [CHANGE] {0}: {1}  ->  {2}" -f $r.S.Title, (Describe $r.S $r.Cur), (Describe $r.S $r.S.Proposed)) 'Green'
         if ($r.Note) { Say ("           {0}" -f $r.Note) 'DarkGray' }
@@ -1172,7 +1189,8 @@ function Show-Preview($rows) {
         Say ('           ' + $Theme.Name + ' graphics: ' + ($vals -join ', ')) 'DarkGray'
     }
     if ($ok.Count -gt 0) {
-        Say ("  [OK]     {0} items already set" -f $ok.Count) 'DarkGray'
+        Say ("  [OK]     {0} items already at the {1} value:" -f $ok.Count, $Theme.Name) 'DarkGray'
+        foreach ($r in $ok) { Say ("           {0} = {1}" -f ($r.S.Title -replace '^GTA: ', 'Game '), (Describe $r.S $r.S.Proposed)) 'DarkGray' }
         Say '           (some may come from a Setting you ran before: run REWIND first to start clean)' 'DarkGray'
     }
 }
