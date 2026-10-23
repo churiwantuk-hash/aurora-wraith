@@ -1177,6 +1177,7 @@ function Show-Preview($rows) {
     $win = @($rows | Where-Object { $_.S.Kind -ne 'xml' }).Count; $gx = @($rows | Where-Object { $_.S.Kind -eq 'xml' }).Count
     Head ("{0} to change  |  {1} already optimal  |  {2} skipped" -f $change.Count, $ok.Count, $skip.Count)
     Say ("  {0} adjusts {1} items on this PC: {2} Windows + {3} game graphics" -f $Theme.Name, $rows.Count, $win, $gx) 'White'
+    if ($script:AwSwitch) { Say ("  An earlier Setting is still on this PC: {0} puts it back to the original values first, then applies only its own." -f $Theme.Name) 'Yellow' }
     foreach ($r in $change) {
         Say ("  [CHANGE] {0}: {1}  ->  {2}" -f $r.S.Title, (Describe $r.S $r.Cur), (Describe $r.S $r.S.Proposed)) 'Green'
         if ($r.Note) { Say ("           {0}" -f $r.Note) 'DarkGray' }
@@ -1191,7 +1192,6 @@ function Show-Preview($rows) {
     if ($ok.Count -gt 0) {
         Say ("  [OK]     {0} items already at the {1} value:" -f $ok.Count, $Theme.Name) 'DarkGray'
         foreach ($r in $ok) { Say ("           {0} = {1}" -f ($r.S.Title -replace '^GTA: ', 'Game '), (Describe $r.S $r.S.Proposed)) 'DarkGray' }
-        Say '           (some may come from a Setting you ran before: run REWIND first to start clean)' 'DarkGray'
     }
 }
 $Presets['LV6'].Title = 'REVENANT'; $Presets['LV8'].Title = 'OMEGA'
