@@ -1173,6 +1173,7 @@ function Show-Preview($rows) {
     $win = @($rows | Where-Object { $_.S.Kind -ne 'xml' }).Count; $gx = @($rows | Where-Object { $_.S.Kind -eq 'xml' }).Count
     Head ("{0} to change  |  {1} already optimal  |  {2} skipped" -f $change.Count, $ok.Count, $skip.Count)
     Say ("  {0} adjusts {1} items on this PC: {2} Windows + {3} game graphics" -f $Theme.Name, $rows.Count, $win, $gx) 'White'
+    if ($script:AwSwitch) { Say ("  An earlier Setting is still on this PC: {0} puts it back to the original values first, then applies only its own." -f $Theme.Name) 'Yellow' }
     foreach ($r in $change) {
         Say ("  [CHANGE] {0}: {1}  ->  {2}" -f $r.S.Title, (Describe $r.S $r.Cur), (Describe $r.S $r.S.Proposed)) 'Green'
         if ($r.Note) { Say ("           {0}" -f $r.Note) 'DarkGray' }
@@ -1187,7 +1188,6 @@ function Show-Preview($rows) {
     if ($ok.Count -gt 0) {
         Say ("  [OK]     {0} items already at the {1} value:" -f $ok.Count, $Theme.Name) 'DarkGray'
         foreach ($r in $ok) { Say ("           {0} = {1}" -f ($r.S.Title -replace '^GTA: ', 'Game '), (Describe $r.S $r.S.Proposed)) 'DarkGray' }
-        Say '           (some may come from a Setting you ran before: run REWIND first to start clean)' 'DarkGray'
     }
 }
 $Presets['CROWD'] = @{ Title = 'TITAN'; Profile = 'HIGH'; Mode = 'CROWD'; Keep = @(); Desc = 'Mega crowd: empty city traffic, shortest draw distance, lowest CPU load' }
@@ -1229,6 +1229,50 @@ function Get-SignatureRows($hw) {
         }
     }
     return $r
+}
+# Clean switch: if an earlier Setting is still on this PC, its backups are put back first (inside the same y/n),
+# so only this Setting's own values end up applied and the preview shows its full list against the original values.
+function Get-OpenBackups {
+    @(foreach ($dir in @($BackupDir, $LegacyBackupDir) | Select-Object -Unique) {
+        Get-ChildItem $dir -Filter 'backup-*.json' -ErrorAction SilentlyContinue | Where-Object { $_.Name -notlike '*.restored.json' }
+    }) | Sort-Object Name
+}
+function Get-OriginalMap {
+    $map = @{}
+    foreach ($f in @(Get-OpenBackups)) {   # oldest first: the first value seen for an item is the PC's original
+        try {
+            $parsed = ConvertFrom-Json -InputObject (Get-Content $f.FullName -Raw -Encoding UTF8)   # assigned first: PS 5.1 would hand the whole array over as one item
+            foreach ($x in @($parsed)) { if ($x.Applied -and -not $map.ContainsKey([string]$x.Id)) { $map[[string]$x.Id] = $x } }
+        } catch { }
+    }
+    return $map
+}
+${function:Build-PreviewBase} = ${function:Build-Preview}
+function Build-Preview($plan, $hw) {
+    $rows = @(Build-PreviewBase $plan $hw)
+    if ($null -eq $script:AwOrig) { $script:AwOrig = Get-OriginalMap; $script:AwSwitch = ($script:AwOrig.Count -gt 0) }
+    if ($script:AwSwitch) {
+        # judge every item against the PC's original value (what it will be after the earlier Setting is put back)
+        foreach ($r in $rows) {
+            if ($r.Status -notin @('OK', 'CHANGE') -or -not $script:AwOrig.ContainsKey([string]$r.S.Id)) { continue }
+            $b = $script:AwOrig[[string]$r.S.Id].Before; $cmp = $b; if ($null -eq $cmp) { $cmp = $r.S.Default }
+            $r.Cur = $b
+            if (Same $cmp $r.S.Proposed) { $r.Status = 'OK'; $r.Note = ''; continue }
+            $why = Test-Support $r.S $hw
+            if ($why) { $r.Status = 'SKIP'; $r.Note = $why } else { $r.Status = 'CHANGE'; $r.Note = $r.S.Why }
+        }
+    }
+    return $rows
+}
+${function:Invoke-ApplyBase} = ${function:Invoke-Apply}
+function Invoke-Apply($rows, [string]$label) {
+    if ($script:AwSwitch) {
+        Head 'Putting the earlier Setting back to the original values first'
+        foreach ($f in @(Get-OpenBackups | Sort-Object Name -Descending)) { Invoke-Restore $f.FullName }
+        $script:AwSwitch = $false; $script:AwOrig = @{}
+        $rows = @(Build-PreviewBase @($rows | ForEach-Object { $_.S }) $hw)
+    }
+    return (Invoke-ApplyBase $rows $label)
 }
 ${function:Get-PlanBase} = ${function:Get-Plan}
 function Get-Plan([string]$profile, [string]$mode, $hw) {
