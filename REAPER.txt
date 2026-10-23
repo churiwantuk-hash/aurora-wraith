@@ -1098,8 +1098,32 @@ function Show-Banner {
 # ------------------------------------------------------------------ setting: REAPER (theme + recipe, set by the pack builder)
 $Theme = @{ Name = 'REAPER'; Tag = 'Fight + strongest system: Ultimate power, FSO off, GPU scheduling left as is'; A = 'Red'; B = 'DarkRed'; G = 'Gray'; D = 'DarkRed'; Fg = 'Red'; Bg = 'Black'; Edge = 'x'; Icon = '+' }
 $ThemeMap = @{ 'Cyan' = $Theme.A; 'DarkCyan' = $Theme.B; 'Magenta' = $Theme.A; 'Green' = $Theme.G; 'DarkGray' = $Theme.D }
-function Say([string]$text, [string]$color = 'Gray') { if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
-function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + $text + ' ') -ForegroundColor $Theme.A }
+# Own wording: engine line (regex) -> this Setting's line
+$Voice = @(
+    @('^  Scanning PC\.\.\.$', '  Sharpening the scythe: reading your PC...'),
+    @('^PC specs$', 'Soul count'),
+    @('^Warnings$', 'Omens'),
+    @('^  Recommended level for this PC: (.+)$', '  Best harvest for this PC: $1'),
+    @('^(.+) preset: (.+)$', 'REAPER harvest: $2'),
+    @('^  Level: (.+)$', '  Edge: $1'),
+    @('^(\d+) to change  \|  (\d+) already optimal  \|  (\d+) skipped$', 'Harvest list: $1 to reap | $2 already reaped | $3 skipped'),
+    @('^  \[CHANGE\] ', '  [REAP] '),
+    @('^  OK    ', '  TAKEN '),
+    @('^RAM-heavy apps \((\d+) MB total\)$', 'Souls wasting power ($1 MB)'),
+    @('^  No RAM-heavy apps to close\.$', '  No souls to collect.'),
+    @('^Apply everything\? (\d+) settings \+ close (\d+) apps \(originals are backed up, restore with menu 4\) \(y/n\)$', 'Swing the scythe? $1 settings + close $2 apps, backup saved first (y/n)'),
+    @('^Cancelled, nothing changed\.$', 'The scythe rests, nothing changed.'),
+    @('^Done: (\d+) applied, (\d+) failed$', 'Reaped: $1 applied, $2 failed'),
+    @('^(.+) preset complete$', 'REAPER harvest done: fight-ready at full power'),
+    @('^  Reboot once if Memory Compression / HAGS were enabled, then start playing\.$', '  Reboot once to finish the harvest, then play.'),
+    @('^  This PC is already fully optimized\. Nothing to change\.$', '  Nothing left to reap. Nothing to change.'),
+    @('^Do these yourself \(cannot be set by a script\)$', 'Reaper rites (do these yourself)')
+)
+function VoiceText([string]$t) { foreach ($v in $Voice) { if ($t -match $v[0]) { return ($t -replace $v[0], $v[1]) } }; return $t }
+function Say([string]$text, [string]$color = 'Gray') { $text = VoiceText $text; if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
+function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + (VoiceText $text) + ' ') -ForegroundColor $Theme.A }
+function Ask([string]$q) { $q = VoiceText $q; if ($AutoAction) { return 'y' } return (Read-Host $q) }
+function RH([string]$q) { return (Read-Host (VoiceText $q)) }
 function Show-Banner {
     $edge = '  ' + ($Theme.Edge * 60).Substring(0, 60)
     $title = $Theme.Icon + '  ' + $Theme.Name + '  ' + $Theme.Icon

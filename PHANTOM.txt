@@ -1098,8 +1098,32 @@ function Show-Banner {
 # ------------------------------------------------------------------ setting: PHANTOM (theme + recipe, set by the pack builder)
 $Theme = @{ Name = 'PHANTOM'; Tag = 'Fight-ready: sharp, no grass or blur, lighter texture filter for extra FPS'; A = 'Magenta'; B = 'DarkGray'; G = 'White'; D = 'DarkGray'; Fg = 'Magenta'; Bg = 'Black'; Edge = '+-'; Icon = '%%' }
 $ThemeMap = @{ 'Cyan' = $Theme.A; 'DarkCyan' = $Theme.B; 'Magenta' = $Theme.A; 'Green' = $Theme.G; 'DarkGray' = $Theme.D }
-function Say([string]$text, [string]$color = 'Gray') { if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
-function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + $text + ' ') -ForegroundColor $Theme.A }
+# Own wording: engine line (regex) -> this Setting's line
+$Voice = @(
+    @('^  Scanning PC\.\.\.$', '  Vanishing into the system: scanning...'),
+    @('^PC specs$', 'Silhouette'),
+    @('^Warnings$', 'Exposed spots'),
+    @('^  Recommended level for this PC: (.+)$', '  Best disguise for this PC: $1'),
+    @('^(.+) preset: (.+)$', 'PHANTOM ambush: $2'),
+    @('^  Level: (.+)$', '  Stealth: $1'),
+    @('^(\d+) to change  \|  (\d+) already optimal  \|  (\d+) skipped$', 'Ambush plan: $1 to vanish | $2 already unseen | $3 skipped'),
+    @('^  \[CHANGE\] ', '  [VANISH] '),
+    @('^  OK    ', '  GONE '),
+    @('^RAM-heavy apps \((\d+) MB total\)$', 'Witnesses to remove ($1 MB)'),
+    @('^  No RAM-heavy apps to close\.$', '  No witnesses around.'),
+    @('^Apply everything\? (\d+) settings \+ close (\d+) apps \(originals are backed up, restore with menu 4\) \(y/n\)$', 'Set the ambush? $1 settings + close $2 apps, backup saved first (y/n)'),
+    @('^Cancelled, nothing changed\.$', 'The phantom reveals itself, nothing changed.'),
+    @('^Done: (\d+) applied, (\d+) failed$', 'Vanished: $1 applied, $2 failed'),
+    @('^(.+) preset complete$', 'PHANTOM in position: sharp, clear, ready'),
+    @('^  Reboot once if Memory Compression / HAGS were enabled, then start playing\.$', '  Reboot once to disappear fully, then play.'),
+    @('^  This PC is already fully optimized\. Nothing to change\.$', '  Already invisible. Nothing to change.'),
+    @('^Do these yourself \(cannot be set by a script\)$', 'Ambush tips (do these yourself)')
+)
+function VoiceText([string]$t) { foreach ($v in $Voice) { if ($t -match $v[0]) { return ($t -replace $v[0], $v[1]) } }; return $t }
+function Say([string]$text, [string]$color = 'Gray') { $text = VoiceText $text; if ($ThemeMap.ContainsKey($color)) { $color = $ThemeMap[$color] }; Write-Host $text -ForegroundColor $color }
+function Head([string]$text) { Write-Host ''; Write-Host (' ' + $Theme.Icon + ' ' + (VoiceText $text) + ' ') -ForegroundColor $Theme.A }
+function Ask([string]$q) { $q = VoiceText $q; if ($AutoAction) { return 'y' } return (Read-Host $q) }
+function RH([string]$q) { return (Read-Host (VoiceText $q)) }
 function Show-Banner {
     $edge = '  ' + ($Theme.Edge * 60).Substring(0, 60)
     $title = $Theme.Icon + '  ' + $Theme.Name + '  ' + $Theme.Icon
